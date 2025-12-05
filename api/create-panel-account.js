@@ -36,10 +36,10 @@ export default async function handler(req, res) {
     const PTERO_API_KEY = process.env.PTERO_API_KEY;      // Application API key (/admin/api)
     const LOGIN_URL     = process.env.PTERO_LOGIN_URL || PTERO_API_URL;
 
-    const PTERO_EGG_ID        = Number(process.env.PTERO_EGG_ID || "0");
-    const PTERO_ALLOCATION_ID = Number(process.env.PTERO_ALLOCATION_ID || "0");
+    const PTERO_EGG_ID        = Number(process.env.PTERO_EGG_ID || "15");
+    const PTERO_ALLOCATION_ID = Number(process.env.PTERO_ALLOCATION_ID || "1");
     const PTERO_DOCKER_IMAGE  = process.env.PTERO_DOCKER_IMAGE || "ghcr.io/parkervcp/yolks:nodejs_18";
-    const PTERO_STARTUP       = process.env.PTERO_STARTUP || "bash";
+    const PTERO_STARTUP       = process.env.PTERO_STARTUP || "npm start";
 
     if (!PTERO_API_URL || !PTERO_API_KEY) {
       return res.status(500).json({
@@ -167,8 +167,11 @@ export default async function handler(req, res) {
         default: PTERO_ALLOCATION_ID,
       },
       environment: {
-        // isi env khusus egg kamu kalau perlu, atau biarkan kosong
-      },
+            INST: "npm",
+            USER_UPLOAD: "0",
+            AUTO_UPDATE: "0",
+            CMD_RUN: "npm start"
+          },
     };
 
     const createServerRes = await fetch(
