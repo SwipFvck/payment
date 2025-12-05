@@ -1,6 +1,21 @@
 // api/create-panel-account.js
 
 export default async function handler(req, res) {
+  // ==============================
+  // CORS
+  // ==============================
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  // kalau mau lebih ketat, ganti "*" jadi:
+  // "https://markett-pi.vercel.app"
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  // Preflight dari browser
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  // Hanya izinkan POST untuk endpoint ini
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
