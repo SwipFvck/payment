@@ -15,9 +15,9 @@ export default async function handler(req, res) {
     }
 
     // Konfigurasi
-    const PTERO_API_URL = "https://panel-kamu.com"; // TODO: ganti sesuai panel
-    const PTERO_API_KEY = "PTRO_API_KEY_KAMU"; // TODO: ganti API key Pterodactyl
-    const LOGIN_URL = "https://panel-kamu.com"; // TODO: URL login user
+    const PTERO_API_URL = "https://relxzpribb.izumicool.my.id"; // TODO: ganti sesuai panel
+    const PTERO_API_KEY = "ptla_uAA87nb5vLssoQbIPsYDela230JyXuPdCQop7wb4CzM"; // TODO: ganti API key Pterodactyl
+    const LOGIN_URL = "https://relxzpribb.izumicool.my.id"; // TODO: URL login user
 
     // RAM mapping berdasarkan produk
     const ramMapping = {
