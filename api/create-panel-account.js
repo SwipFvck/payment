@@ -1,4 +1,4 @@
-// File: api/create-panel-account.js
+// api/create-panel-account.js
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -10,138 +10,95 @@ export default async function handler(req, res) {
 
     if (!username || !product_id || !order_id || !amount) {
       return res.status(400).json({
-        error: "Missing required fields: username, product_id, order_id, amount",
+        error: "username, product_id, order_id, amount wajib diisi",
       });
     }
 
-    // Konfigurasi
-    const PTERO_API_URL = "https://relxzpribb.izumicool.my.id"; // TODO: ganti sesuai panel
-    const PTERO_API_KEY = "ptla_uAA87nb5vLssoQbIPsYDela230JyXuPdCQop7wb4CzM"; // TODO: ganti API key Pterodactyl
-    const LOGIN_URL = "https://relxzpribb.izumicool.my.id"; // TODO: URL login user
+    // ==============================
+    // KONFIGURASI PTERODACTYL
+    // ==============================
+    const PTERO_API_URL = process.env.PTERO_API_URL;   // contoh: https://panel.swiperfvck.my.id
+    const PTERO_API_KEY = process.env.PTERO_API_KEY;   // Application API Key dari /admin/api
+    const LOGIN_URL = process.env.PTERO_LOGIN_URL || PTERO_API_URL;
 
-    // RAM mapping berdasarkan produk
-    const ramMapping = {
-      "panel-1gb": 1024,
-      "panel-2gb": 2048,
-      "panel-3gb": 3072,
-      "panel-4gb": 4096,
-      "panel-5gb": 5120,
-      "panel-6gb": 6144,
-      "panel-7gb": 7168,
-      "panel-8gb": 8192,
-      "panel-9gb": 9216,
-      "panel-10gb": 10240,
-      "panel-unli": 999999, // bebas
-    };
-
-    const ram = ramMapping[product_id];
-    if (!ram) {
-      return res.status(400).json({ error: "Invalid product_id / not a panel product" });
+    if (!PTERO_API_URL || !PTERO_API_KEY) {
+      return res.status(500).json({
+        error: "PTERO_API_URL / PTERO_API_KEY belum diset di Environment Vercel",
+      });
     }
 
-    // Generate password random
+    // username → email dummy
+    const email = `${username}@example.com`;
+
+    // generate password random
     function randomPass(len) {
-      const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-      let pass = "";
+      const chars =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      let out = "";
       for (let i = 0; i < len; i++) {
-        pass += charset[Math.floor(Math.random() * charset.length)];
+        out += chars[Math.floor(Math.random() * chars.length)];
       }
-      return pass;
+      return out;
     }
 
     const password = randomPass(10);
 
-    console.log("Membuat user panel:", username);
+    console.log("Create panel user:", { username, email, order_id, amount });
 
-    // Buat user di Pterodactyl
-    const createUser = await fetch(`${PTERO_API_URL}/api/application/users`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${PTERO_API_KEY}`,
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        username,
-        email: `${username}@example.com`, // auto email
-        first_name: username,
-        last_name: "User",
-        password,
-      }),
-    });
+    // ==============================
+    // CALL PTERODACTYL API (CREATE USER)
+    // ==============================
+    const createUserRes = await fetch(
+      `${PTERO_API_URL.replace(/\/+$/, "")}/api/application/users`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${PTERO_API_KEY}`,
+        },
+        body: JSON.stringify({
+          username,
+          email,
+          first_name: username,
+          last_name: "User",
+          password,
+        }),
+      }
+    );
 
-    const createdUser = await createUser.json();
-    if (!createUser.ok) {
-      console.error("Error create user:", createdUser);
-      return res.status(createUser.status).json({
+    const bodyText = await createUserRes.text();
+    let bodyJson;
+    try {
+      bodyJson = JSON.parse(bodyText);
+    } catch {
+      bodyJson = bodyText;
+    }
+
+    if (!createUserRes.ok) {
+      console.error("Ptero create user error:", createUserRes.status, bodyJson);
+      return res.status(createUserRes.status).json({
         error: "Gagal membuat user panel",
-        details: createdUser,
+        status: createUserRes.status,
+        response: bodyJson,
       });
     }
 
-    const userId = createdUser.attributes.id;
+    const user = bodyJson.attributes || bodyJson;
 
-    console.log("User berhasil dibuat:", userId);
+    console.log("Panel user created:", user.id || user.uuid || "?");
 
-    // Buat 1 server default auto
-    const createServer = await fetch(`${PTERO_API_URL}/api/application/servers`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${PTERO_API_KEY}`,
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        name: `srv-${username}`,
-        user: userId,
-        egg: 1, // TODO: sesuaikan egg ID
-        docker_image: "ghcr.io/parkervcp/yolks:nodejs_18", // contoh image NodeJS
-        startup: "npm start",
-        limits: {
-          memory: ram,
-          swap: 0,
-          disk: ram * 2,
-          io: 500,
-          cpu: 100,
-        },
-        environment: {
-          STARTUP_CMD: "npm",
-        },
-        feature_limits: {
-          databases: 1,
-          backups: 1,
-        },
-        allocation: {
-          default: 1, // TODO: sesuaikan allocation ID node kamu
-        },
-      }),
-    });
-
-    const serverResponse = await createServer.json();
-    if (!createServer.ok) {
-      console.error("Error create server:", serverResponse);
-      return res.status(createServer.status).json({
-        error: "User dibuat, tetapi gagal membuat server",
-        user: createdUser,
-        details: serverResponse,
-      });
-    }
-
-    console.log("Server berhasil dibuat untuk user:", username);
-
-    return res.json({
+    return res.status(200).json({
       success: true,
-      message: "Panel user and server created",
       panel: {
         username,
         password,
         login_url: LOGIN_URL,
-        ram,
       },
     });
   } catch (err) {
-    console.error("Server error:", err);
-    res.status(500).json({
+    console.error("create-panel-account ERROR:", err);
+    return res.status(500).json({
       error: "Internal server error",
       message: err.message,
     });
